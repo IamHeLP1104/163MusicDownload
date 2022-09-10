@@ -229,7 +229,7 @@ class DownloadMusic():
         # flag += 1
         # print(5)
         print(name, "结束")
-    async def main(self, urls, names):
+    async def createTask(self, urls, names):
         if names:
             tasks = [asyncio.create_task(self.downloadOneMusic(url, self.format_name(name))) for url, name in zip(urls, names)]
         else:
@@ -244,7 +244,7 @@ class DownloadMusic():
         if not os.path.exists(f"./{self.an}"):
             os.mkdir(f"./{self.an}")
         loop = asyncio.get_event_loop()  
-        loop.run_until_complete(self.main(urls, names))
+        loop.run_until_complete(self.createTask(urls, names))
         # en = True
         # print('100%/100%')
         # t.join()  
