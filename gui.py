@@ -88,17 +88,6 @@ class DownloadMusic():
         
 
 
-    def beginDownload(self):
-        if self.id:
-            res = self.getPlaylistInf()
-            if res:
-                QMessageBox.warning(self.ui, '警告','等待当前任务完成')     
-            loop = asyncio.new_event_loop()
-            worker = Thread(target=self.cutWorkers, args=(loop, 0))
-            worker.start()
-        else:
-            QMessageBox.warning(self.ui, '警告','未输入')
-            return
 
     def beginDownload(self, kind):
         if self.id:
@@ -109,12 +98,13 @@ class DownloadMusic():
             if res:
                 QMessageBox.warning(self.ui, '警告','等待当前任务完成')     
             loop = asyncio.new_event_loop()
-            worker = Thread(target=self.testGetUrlsNames, args=(loop, kind))
+            worker = Thread(target=self.cutWorkers, args=(loop, kind))
             worker.start()
         else:
             QMessageBox.warning(self.ui, '警告','未输入')
             return
     def cutWorkers(self, loop, kind):
+        print(self.song_names, self.urls)  
         asyncio.set_event_loop(loop)    
 
         list_len = len(self.urls) // self.max_workers + 1
@@ -149,7 +139,7 @@ class DownloadMusic():
     def getAlbumInf(self):
 
         res = requests.get(f'http://music.163.com/api/album/{self.id}?ext=true', headers=headers4)
-        print(res)
+        # print(res)
         if res.status_code != 200:
             QMessageBox.warning(self.ui, '警告', '无效')
 
@@ -158,15 +148,16 @@ class DownloadMusic():
 
 
         dic = res.json()
-        print(dic)
+        # print(dic)
         self.album_or_playlist_name = dic['album']['name']
         songs_information = dic['album']['songs']
-        if self.urls or self.song_names:
+        if not self.urls and not self.song_names:
             for i in songs_information:
                 # print(i['id'], ']i['name)
                 id = i['id']
                 url = 'https://link.hhtjim.com/163/' + str(id) +'.mp3'
                 name = i['name'] + '.mp3'
+                print(id, url)
                 # url = res.json()['data'][0]['urls']['original']
                 self.song_names.append(name)
                 self.urls.append(url)
@@ -187,7 +178,8 @@ class DownloadMusic():
             return songs_inf
         songs_inf = get_js()
 
-        if self.urls or self.song_names:
+        if not self.urls and not self.song_names:
+
             for song_inf in songs_inf:
                 id = song_inf['id']
                 url = 'https://link.hhtjim.com/163/' + str(id) +'.mp3'
