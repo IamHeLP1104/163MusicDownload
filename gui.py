@@ -1,5 +1,6 @@
-from PySide2.QtWidgets import QApplication, QMessageBox
+from PySide2.QtWidgets import QApplication, QMessageBox, QTableWidgetItem
 from PySide2.QtUiTools import QUiLoader
+from PySide2.QtCore import Qt
 from threading import Thread
 import re
 import aiohttp
@@ -65,36 +66,58 @@ class DownloadMusic():
         # 注意：里面的控件对象也成为窗口对象的属性了
         # 比如 self.ui.button , self.ui.textEdit
         self.ui = QUiLoader().load('dwnld.ui')
-
-        self.ui.lineEdit.returnPressed.connect(lambda: self.saveID(0))
-        self.ui.lineEdit_2.returnPressed.connect(lambda: self.saveID(1))
-
-        self.ui.pushButton_2.clicked.connect(lambda: self.saveID(0))
-        self.ui.pushButton_4.clicked.connect(lambda: self.saveID(1))
         self.ui.pushButton_3.clicked.connect(lambda: self.beginDownload(0))
 
         self.ui.pushButton_5.clicked.connect(lambda: self.beginDownload(1))
         self.ui.show()
+    def reset(self):
+        self.ui.tableWidget.clearContents()
+        self.ui.tableWidget_2.clearContents()
+        self.ui.progressBar.setValue(0)
+        self.ui.progressBar_2.setValue(0)
+
+
+    def OneItem(self, tw, row):
+        item = QTableWidgetItem(self.song_names[row])
+        item.setFlags(Qt.ItemIsEnabled)
+        item.setTextAlignment(Qt.AlignCenter)  # 参数名字段不允许修改
+
+        tw.setItem(row, 0, item)
+    def setTW(self, tw):
+        tw.setRowCount(len(self.urls))
+        for row in range(len(self.urls)):
+            self.OneItem(tw, row)
+
+       
+
     def testGetUrlsNames(self, loop):
         asyncio.set_event_loop(loop)
-        print(self.song_names, self.urls)    
-
-        
-    def saveID(self, kind):
-        if kind == 0:
-            self.id = self.ui.lineEdit.text()
-        if kind == 1:
-            self.id = self.ui.lineEdit_2.text()
-        
-
-
-
+        # print(self.song_names, self.urls)    
     def beginDownload(self, kind):
-        if self.id:
-            if kind == 0:
+        if kind == 0:
+            try:
+                self.id = int(self.ui.lineEdit.text())
+            except ValueError:
+                QMessageBox.warning(self.ui, '警告', '无效')
+            else:
                 res = self.getPlaylistInf()
-            if kind == 1:
+                if res:
+                    return
+                tw = self.ui.tableWidget
+                
+        if kind == 1:
+            try:
+                self.id = int(self.ui.lineEdit_2.text())
+            except ValueError:
+                QMessageBox.warning(self.ui, '警告', '无效')
+            else:
                 res = self.getAlbumInf()
+                if res:
+                    return
+                tw = self.ui.tableWidget_2
+        if self.id:
+
+            self.setTW(tw)
             if res:
                 QMessageBox.warning(self.ui, '警告','等待当前任务完成')     
             loop = asyncio.new_event_loop()
@@ -104,7 +127,7 @@ class DownloadMusic():
             QMessageBox.warning(self.ui, '警告','未输入')
             return
     def cutWorkers(self, loop, kind):
-        print(self.song_names, self.urls)  
+        # print(self.song_names, self.urls)  
         asyncio.set_event_loop(loop)    
 
         list_len = len(self.urls) // self.max_workers + 1
@@ -127,27 +150,34 @@ class DownloadMusic():
             bar.setValue(i)
             # print(temp_urls, temp_song_names) 
             self.downloadMusic(temp_urls, temp_song_names)    
+        self.reset()
+        
     def getPlaylistTitle(self, id):
         playlist_inf = requests.get(f'https://music.163.com/playlist?id={id}', headers2)
         if playlist_inf.status_code != 200:
+            print(type(self.id))
             QMessageBox.warning(self.ui, '警告', '无效')
 
-            return
+            return 1
         page_tx = playlist_inf.text
         title = reg.findall(page_tx)[0]
         self.album_or_playlist_name = title
     def getAlbumInf(self):
 
         res = requests.get(f'http://music.163.com/api/album/{self.id}?ext=true', headers=headers4)
-        # print(res)
         if res.status_code != 200:
             QMessageBox.warning(self.ui, '警告', '无效')
 
-            return
+            return 1
 
 
+        try:
+            dic = res.json()
+        except KeyError:
+            QMessageBox.warning(self.ui, '警告', '无效')
 
-        dic = res.json()
+            return 1
+
         # print(dic)
         self.album_or_playlist_name = dic['album']['name']
         songs_information = dic['album']['songs']
@@ -164,13 +194,18 @@ class DownloadMusic():
         else:
             return 1
     def getPlaylistInf(self):
-        self.getPlaylistTitle(self.id)
+        res = self.getPlaylistTitle(self.id)
+        if res:
+            return 1
         def get_js():
             url = f'https://api.no0a.cn/api/cloudmusic/playlist/{self.id}'
             # print(url)
             js_res = requests.get(url, headers1)
             # print(js_res.text)
-            js_res = js_res.json()
+            try:
+                js_res = js_res.json()
+            except requests.exceptions.JSONDecodeError:
+                return 1            
             songs_inf = js_res['results']
             if len(songs_inf) == 1:
                 sleep(1)
@@ -207,7 +242,7 @@ class DownloadMusic():
         return name
 
     async def downloadOneMusic(self, url, name=None):
-        print(url, name)
+        # print(url, name)
         if not name:
             name = url.split("/")[-1]
         # print(name, "开始")
@@ -220,7 +255,7 @@ class DownloadMusic():
 
                 else:
                     cont = await res.content.read()
-                    path = f'./{self.an}/' + name
+                    path = f'Music/{self.an}/' + name
 
                     async with aiofiles.open(path, "wb") as f:
 
@@ -241,8 +276,8 @@ class DownloadMusic():
         # t.start()
         # list_len = len
         self.an = self.format_name(self.album_or_playlist_name)
-        if not os.path.exists(f"./{self.an}"):
-            os.mkdir(f"./{self.an}")
+        if not os.path.exists(f"Music/{self.an}"):
+            os.mkdir(f"Music/{self.an}")
         loop = asyncio.get_event_loop()  
         loop.run_until_complete(self.createTask(urls, names))
         # en = True
