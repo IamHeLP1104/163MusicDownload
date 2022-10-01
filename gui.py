@@ -1,6 +1,6 @@
-from PySide2.QtWidgets import QApplication, QMessageBox, QTableWidgetItem
+from PySide2.QtWidgets import QApplication, QMessageBox, QTableWidgetItem, QProgressBar
 from PySide2.QtUiTools import QUiLoader
-from PySide2.QtCore import Qt
+from PySide2.QtCore import Qt, QObject, Signal
 from threading import Thread
 import re
 import aiohttp
@@ -9,32 +9,25 @@ import asyncio
 import os
 from time import sleep
 import requests
-headers = {
-    "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36 Edg/105.0.1343.42',
-    'Cookie': 'PHPSESSID=1j5kck1ei93ujnd5334tnke46b',
-
-}
 headers1 = {
     'Host': 'api.no0a.cn',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:104.0) Gecko/20100101 Firefox/104.0',
-    'Cookie': 'Hm_lvt_f41620af9755d9c22a24ca27a323e40b=1661692758; Hm_lpvt_f41620af9755d9c22a24ca27a323e40b=1661692758',
 }
 headers2 = {
     'Host': 'music.163.com',
-    # 'Connection': 'keep-alive',
     "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:104.0) Gecko/20100101 Firefox/104.0',
 }
-headers4 = {
-    'Host': 'music.163.com',
-    # 'Connection': 'keep-alive',
-    "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:104.0) Gecko/20100101 Firefox/104.0',
-
-    'Cookie': 'JSESSIONID-WYYY=EcbWXn8zBxDpIdjhpj%5CtzFPJpHektI5uoxptwVZdJX8kZ5ibyDDrK%5CGm2tInOr7MxMZB2jpz9bNHC9ocvTHOXrn1%5Cbv%2B5b3OryTbjiWQuMRtZYXf6JB2pzfSWnbE1M1hfZ2xDJQ2%5CrvSrzNtQjJu3266jDbqp7BIINMVBAE1F0ekHoF7%3A1662730781709; _iuqxldmzr_=32; _ntes_nnid=fef78cc22ecc571b6c270c401cc34441,1661435512428; _ntes_nuid=fef78cc22ecc571b6c270c401cc34441; NMTID=00O2WR0QV5B0YElBUvvkPZeQk1dg3EAAAGC1UYNOQ; WEVNSM=1.0.0; WNMCID=uclqkm.1661435513719.01.0; WM_NI=p5MjtnlZ2WYsV01SCnJmHZS7c2lIwDxOeJ0jAzIlV7XouVzBAc5ZGnxzdtzVWqXqCywGd…cAst48TOu1KpRYY9y09TcZj4G249bRWlLyK5lRzYWmtvm1UGU%3D; YD00000558929251%3AWM_NIKE=9ca17ae2e6ffcda170e2e6eea7b345a1ac86adb360af9a8eb7c84a979e8f87d154a2b3988cb553ad9fafb4cd2af0fea7c3b92ab8b000a8c250a192a1dacc538c929b9be93aae8ae58ad945aa8700dae748fbea8eb6b239a8b0a0a5e47fb5b68e8bc8739ba6ffa5f2529ba80092e13392b88fb1fb7bf19584aaef79adae9886bc33b0ef8d94e24bb1acfcd9d745b7ef8591d1539be7b7d1bc60a186a6d5c63af8e7aeb3d66890a785d6ef5aba87998ef77eafef9ba8d837e2a3; YD00000558929251%3AWM_TID=z2sKnihePb5AEEFAEFeRXKjS06Y9FLXJ'.encode("utf-8").decode("latin1"),
-}
-header3 = {
+headers3 = {
     "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:104.0) Gecko/20100101 Firefox/104.0',
 }
 reg = re.compile("<title>(.*?)</title>", re.S)
+
+
+class MySignals(QObject):
+    # 定义一种信号，因为有进度条类，此处要2个参数，类型是：QProgressBar、整形数字
+    # 调用 emit方法发信号时，传入参数必须是这里指定的参数类型
+    # 此处也可分开写两个函数，一个是文本框输出的，一个是给进度条赋值的
+    text_print = Signal(QProgressBar, int)
 
 
 class DownloadMusic():
@@ -46,23 +39,28 @@ class DownloadMusic():
         self.album_or_playlist_name = ''
         self.urls = []
         self.an = ''
+
+        self.total_songs_groups = 0
+
+        self.ms = MySignals()  # 引入信号函数
+        self.ms.text_print.connect(self.set_bar)  # 将信号传递给主程序中pF函数进行处理
         # 从文件中加载UI定义
 
         # 从 UI 定义中动态 创建一个相应的窗口对象
         # 注意：里面的控件对象也成为窗口对象的属性了
         # 比如 self.ui.button , self.ui.textEdit
         self.ui = QUiLoader().load('dwnld.ui')
-        self.ui.pushButton_3.clicked.connect(lambda: self.beginDownload(0))
+        self.ui.pushButton_3.clicked.connect(lambda: self.begin_download(0))
 
-        self.ui.pushButton_5.clicked.connect(lambda: self.beginDownload(1))
+        self.ui.pushButton_5.clicked.connect(lambda: self.begin_download(1))
         self.ui.show()
 
     def reset(self):
-        return
+
         self.ui.tableWidget.clearContents()
         self.ui.tableWidget_2.clearContents()
-        self.ui.progressBar.setValue()
-        self.ui.progressBar_2.setValue()
+        self.ui.progressBar.reset()
+        self.ui.progressBar_2.reset()
 
     def OneItem(self, tw, row):
         item = QTableWidgetItem(self.song_names[row])
@@ -76,56 +74,47 @@ class DownloadMusic():
         for row in range(len(self.urls)):
             self.OneItem(tw, row)
 
-    def testGetUrlsNames(self, loop):
-        asyncio.set_event_loop(loop)
-        # print(self.song_names, self.urls)
-
-    def beginDownload(self, kind):
+    def begin_download(self, kind):
         if kind == 0:
             try:
                 self.id = int(self.ui.lineEdit.text())
             except ValueError:
                 QMessageBox.warning(self.ui, '警告', '无效')
             else:
-                res = self.getPlaylistInf()
+
+                res = self.get_playlist_inf()
                 if res:
                     return
                 tw = self.ui.tableWidget
 
-        if kind == 1:
+        elif kind == 1:
             try:
                 self.id = int(self.ui.lineEdit_2.text())
             except ValueError:
                 QMessageBox.warning(self.ui, '警告', '无效')
             else:
-                res = self.getAlbumInf()
+                res = self.get_album_inf()
                 if res:
                     return
                 tw = self.ui.tableWidget_2
+        self.get_total_groups(kind)
         if self.id:
 
             self.setTW(tw)
             if res:
                 QMessageBox.warning(self.ui, '警告', '等待当前任务完成')
             loop = asyncio.new_event_loop()
-            worker = Thread(target=self.cutWorkers, args=(loop, kind))
+            worker = Thread(target=self.cut_workers, args=(loop, ))
             worker.start()
+
         else:
             QMessageBox.warning(self.ui, '警告', '未输入')
             return
 
-    def cutWorkers(self, loop, kind):
+    def cut_workers(self, loop):
         # print(self.song_names, self.urls)
         asyncio.set_event_loop(loop)
-
-        list_len = len(self.urls) // self.max_workers + 1
-
-        if kind == 0:
-            bar = self.ui.progressBar
-        elif kind == 1:
-            bar = self.ui.progressBar_2
-        bar.setRange(0, list_len)
-        for i in range(1, list_len + 1):
+        for i in range(1, self.total_songs_groups + 1):
             temp_urls = []
             temp_song_names = []
 
@@ -135,57 +124,80 @@ class DownloadMusic():
                 temp_song_names.append(song_name)
                 self.urls.remove(url)
                 self.song_names.remove(song_name)
-            bar.setValue(i)
+
             # print(temp_urls, temp_song_names)
-            self.downloadMusic(temp_urls, temp_song_names)
+            self.download_music(temp_urls, temp_song_names)
+            self.ms.text_print.emit(self.bar, i)
         self.reset()
 
-    def getPlaylistTitle(self, id):
+    def get_total_groups(self, kind):
+        self.total_songs_groups = len(self.urls) // self.max_workers + 1
+        # print(self.total_songs_groups)
+
+        if kind == 0:
+            self.bar = self.ui.progressBar
+        elif kind == 1:
+            self.bar = self.ui.progressBar_2
+        self.bar.setRange(0, self.total_songs_groups)
+
+    def get_playlist_title(self, id):
         playlist_inf = requests.get(
             f'https://music.163.com/playlist?id={id}', headers2)
         if playlist_inf.status_code != 200:
-            print(type(self.id))
+            # print(type(self.id))
             QMessageBox.warning(self.ui, '警告', '无效')
 
             return 1
         page_tx = playlist_inf.text
         title = reg.findall(page_tx)[0]
-        self.album_or_playlist_name = title
+        self.album_or_playlist_name = title.split(' - ')[0]
 
-    def getAlbumInf(self):
+    def get_album_inf(self):
 
         res = requests.get(
-            f'http://music.163.com/api/album/{self.id}?ext=true', headers=headers4)
+            f'http://music.163.com/api/album/{self.id}?ext=true', headers=headers2)
         if res.status_code != 200:
             QMessageBox.warning(self.ui, '警告', '无效')
 
             return 1
 
-        try:
+        def get_json():
+            global songs_information
             dic = res.json()
+            self.album_or_playlist_name = dic['album']['name']
+            songs_information = dic['album']['songs']
+        try:
+            get_json()
+
         except KeyError:
             QMessageBox.warning(self.ui, '警告', '无效')
 
             return 1
 
         # print(dic)
-        self.album_or_playlist_name = dic['album']['name']
-        songs_information = dic['album']['songs']
+
         if not self.urls and not self.song_names:
-            for i in songs_information:
+            for song_information in songs_information:
                 # print(i['id'], ']i['name)
-                id = i['id']
+                artists_names_list = []
+                artists_inf = song_information['artists']
+                for artist_inf in artists_inf:
+                    artist_name = artist_inf['name']
+                    artists_names_list.append(artist_name)
+
+                id = song_information['id']
                 url = 'https://link.hhtjim.com/163/' + str(id) + '.mp3'
-                name = i['name'] + '.mp3'
-                print(id, url)
+                whole_name = song_information['name'] + \
+                    ' - ' + ', '.join(artists_names_list) + '.mp3'
+                # print(id, url)
                 # url = res.json()['data'][0]['urls']['original']
-                self.song_names.append(name)
+                self.song_names.append(whole_name)
                 self.urls.append(url)
         else:
             return 1
 
-    def getPlaylistInf(self):
-        res = self.getPlaylistTitle(self.id)
+    def get_playlist_inf(self):
+        res = self.get_playlist_title(self.id)
         if res:
             return 1
 
@@ -200,7 +212,8 @@ class DownloadMusic():
                 return 1
             songs_inf = js_res['results']
             if len(songs_inf) == 1:
-                sleep(1)
+
+                sleep(0.3)
                 songs_inf = get_js()
             return songs_inf
         songs_inf = get_js()
@@ -214,7 +227,7 @@ class DownloadMusic():
                 song_name = song_inf['name']
                 artists_list = [artist['name']
                                 for artist in song_inf['artist']]
-                artists_name = ','.join(artists_list)
+                artists_name = ', '.join(artists_list)
                 full_name = song_name + ' - ' + artists_name + '.mp3'
 
                 self.song_names.append(full_name)
@@ -234,17 +247,18 @@ class DownloadMusic():
         name = name.replace('"', '\'\'')
         return name
 
-    async def downloadOneMusic(self, url, name=None):
+    async def download_one_music(self, url, name=None):
         # print(url, name)
         if not name:
             name = url.split("/")[-1]
         # print(name, "开始")
+        # timeout=aiohttp.ClientTimeout(total=60)
         async with aiohttp.ClientSession() as session:
 
-            async with session.get(url, headers=headers) as res:
+            async with session.get(url, headers=headers3) as res:
                 # print(res.status)
                 if res.status != 200:
-                    self.downloadOneMusic(url, name)
+                    self.download_one_music(url, name)
 
                 else:
                     cont = await res.content.read()
@@ -258,16 +272,16 @@ class DownloadMusic():
         # print(5)
         print(name, "结束")
 
-    async def createTask(self, urls, names):
+    async def create_task(self, urls, names):
         if names:
-            tasks = [asyncio.create_task(self.downloadOneMusic(
+            tasks = [asyncio.create_task(self.download_one_music(
                 url, self.format_name(name))) for url, name in zip(urls, names)]
         else:
             tasks = [asyncio.create_task(
-                self.downloadOneMusic(url)) for url in urls]
+                self.download_one_music(url)) for url in urls]
         await asyncio.wait(tasks)
 
-    def downloadMusic(self, urls, names=None):
+    def download_music(self, urls, names=None):
         # t = Thread(target=getProgress)
         # t.start()
         # list_len = len
@@ -275,36 +289,13 @@ class DownloadMusic():
         if not os.path.exists(f"Music/{self.an}"):
             os.mkdir(f"Music/{self.an}")
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.createTask(urls, names))
-        # en = True
-        # print('100%/100%')
-        # t.join()
+        loop.run_until_complete(self.create_task(urls, names))
+
+    def set_bar(self, bar, _int):
+        bar.setValue(_int)
 
 
 app = QApplication([])
 
 stats = DownloadMusic()
 app.exec_()
-'''
-def downloadOneMusic(url, name=None):
-    print(url, name)
-    if not name:
-        name = url.split("/")[-1]
-    # print(name, "开始")
-
-    res = requests.get(url, headers=headers)
-    if 200!= 200:
-        downloadOneMusic(url, name)
-
-    else:
-        cont = res.content
-        path = name
-
-        with open(path, "wb") as f:
-
-            f.write(cont)
-downloadOneMusic(
-        'https://link.hhtjim.com/163/1242476.mp3',
-        'What Planet Are You On？ (deadmau5 Remix) - Bodyrox,Luciana,deadmau5.mp3'
-)
-'''
