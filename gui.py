@@ -25,16 +25,10 @@ reg = re.compile("<title>(.*?)</title>", re.S)
 
 
 class ProgressBarSignals(QObject):
-    # 定义一种信号，因为有进度条类，此处要2个参数，类型是：QProgressBar、整形数字
-    # 调用 emit方法发信号时，传入参数必须是这里指定的参数类型
-    # 此处也可分开写两个函数，一个是文本框输出的，一个是给进度条赋值的
-    text_print = Signal(QProgressBar, int)
+    bar_set = Signal(QProgressBar, int)
 
 
 class ResetSignals(QObject):
-    # 定义一种信号，因为有进度条类，此处要2个参数，类型是：QProgressBar、整形数字
-    # 调用 emit方法发信号时，传入参数必须是这里指定的参数类型
-    # 此处也可分开写两个函数，一个是文本框输出的，一个是给进度条赋值的
     reset = Signal()
 
 
@@ -50,15 +44,12 @@ class DownloadMusic():
 
         self.total_songs_groups = 0
 
-        self.ms = ProgressBarSignals()  # 引入信号函数
-        self.ms.text_print.connect(self.set_bar)
-        self.reset_ms = ResetSignals()  # 引入信号函数
-        self.reset_ms.reset.connect(self.resetUI)  # 将信号传递给主程序中pF函数进行处理
-        # 从文件中加载UI定义
+        ### 这4行作用是为了在子线程中更改UI, 否则会报错
+        self.bar_ms = ProgressBarSignals()
+        self.bar_ms.bar_set.connect(self.set_bar)
+        self.reset_ms = ResetSignals()
+        self.reset_ms.reset.connect(self.reset)
 
-        # 从 UI 定义中动态 创建一个相应的窗口对象
-        # 注意：里面的控件对象也成为窗口对象的属性了
-        # 比如 self.ui.button , self.ui.textEdit
         self.ui = QUiLoader().load('dwnld.ui')
         self.ui.setFixedSize(self.ui.width(), self.ui.height())
 
@@ -67,7 +58,10 @@ class DownloadMusic():
         self.ui.show()
 
     def reset(self):
-        self.reset_ms.reset.emit()
+        self.bar.reset()
+        self.tw.clearContents()
+        QMessageBox.information(
+            self.ui, 'Music', '下载完毕')
 
         self.id = ''
         self.song_names = []
@@ -75,13 +69,6 @@ class DownloadMusic():
         self.urls = []
         self.folder_name = ''
         self.total_songs_groups = 0
-
-    def resetUI(self):
-        # print(1)
-        self.bar.reset()
-        self.tw.clearContents()
-        QMessageBox.information(
-            self.ui, 'Music', f'下载完毕')
 
     def OneItem(self, tw, row):
         item = QTableWidgetItem(self.song_names[row])
@@ -134,9 +121,12 @@ class DownloadMusic():
             return
 
     def cut_workers(self, loop):
+        '''
+        这个函数意思是避免async超时报错, 把歌曲分成几个Group, 同时顺便促进了PREOGRESSBAR的使用'''
         # print(self.song_names, self.urls)
         asyncio.set_event_loop(loop)
-        for i in range(1, self.total_songs_groups + 1):
+        for one_group in range(1, self.total_songs_groups + 1):
+            self.downloading_group = one_group
             temp_urls = []
             temp_song_names = []
 
@@ -149,8 +139,8 @@ class DownloadMusic():
 
             # print(temp_urls, temp_song_names)
             self.download_music(temp_urls, temp_song_names)
-            self.ms.text_print.emit(self.bar, i)
-        self.reset()
+            self.bar_ms.bar_set.emit()
+        self.reset_ms.reset.emit()
 
     def get_total_groups(self):
         self.total_songs_groups = len(self.urls) // self.max_workers + 1
@@ -312,8 +302,8 @@ class DownloadMusic():
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.create_task(urls, names))
 
-    def set_bar(self, bar, _int):
-        bar.setValue(_int)
+    def set_bar(self):
+        self.bar.setValue(self.downloading_group)
 
 
 app = QApplication([])
