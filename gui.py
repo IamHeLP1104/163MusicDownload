@@ -1,6 +1,7 @@
 from PySide2.QtWidgets import QApplication, QMessageBox, QTableWidgetItem, QProgressBar
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtCore import Qt, QObject, Signal
+
 from threading import Thread
 import re
 import aiohttp
@@ -23,11 +24,12 @@ headers3 = {
 reg = re.compile("<title>(.*?)</title>", re.S)
 
 
-class MySignals(QObject):
-    # 定义一种信号，因为有进度条类，此处要2个参数，类型是：QProgressBar、整形数字
-    # 调用 emit方法发信号时，传入参数必须是这里指定的参数类型
-    # 此处也可分开写两个函数，一个是文本框输出的，一个是给进度条赋值的
-    text_print = Signal(QProgressBar, int)
+class ProgressBarSignals(QObject):
+    bar_set = Signal(QProgressBar, int)
+
+
+class ResetSignals(QObject):
+    reset = Signal()
 
 
 class DownloadMusic():
@@ -38,29 +40,35 @@ class DownloadMusic():
         self.song_names = []
         self.album_or_playlist_name = ''
         self.urls = []
-        self.an = ''
+        self.folder_name = ''
 
         self.total_songs_groups = 0
 
-        self.ms = MySignals()  # 引入信号函数
-        self.ms.text_print.connect(self.set_bar)  # 将信号传递给主程序中pF函数进行处理
-        # 从文件中加载UI定义
+        ### 这4行作用是为了在子线程中更改UI, 否则会报错
+        self.bar_ms = ProgressBarSignals()
+        self.bar_ms.bar_set.connect(self.set_bar)
+        self.reset_ms = ResetSignals()
+        self.reset_ms.reset.connect(self.reset)
 
-        # 从 UI 定义中动态 创建一个相应的窗口对象
-        # 注意：里面的控件对象也成为窗口对象的属性了
-        # 比如 self.ui.button , self.ui.textEdit
         self.ui = QUiLoader().load('dwnld.ui')
-        self.ui.pushButton_3.clicked.connect(lambda: self.begin_download(0))
+        self.ui.setFixedSize(self.ui.width(), self.ui.height())
 
+        self.ui.pushButton_3.clicked.connect(lambda: self.begin_download(0))
         self.ui.pushButton_5.clicked.connect(lambda: self.begin_download(1))
         self.ui.show()
 
     def reset(self):
+        self.bar.reset()
+        self.tw.clearContents()
+        QMessageBox.information(
+            self.ui, 'Music', '下载完毕')
 
-        self.ui.tableWidget.clearContents()
-        self.ui.tableWidget_2.clearContents()
-        self.ui.progressBar.reset()
-        self.ui.progressBar_2.reset()
+        self.id = ''
+        self.song_names = []
+        self.album_or_playlist_name = ''
+        self.urls = []
+        self.folder_name = ''
+        self.total_songs_groups = 0
 
     def OneItem(self, tw, row):
         item = QTableWidgetItem(self.song_names[row])
@@ -69,13 +77,14 @@ class DownloadMusic():
 
         tw.setItem(row, 0, item)
 
-    def setTW(self, tw):
-        tw.setRowCount(len(self.urls))
+    def setTW(self):
+        self.tw.setRowCount(len(self.urls))
         for row in range(len(self.urls)):
-            self.OneItem(tw, row)
+            self.OneItem(self.tw, row)
 
     def begin_download(self, kind):
-        if kind == 0:
+        self.kind = kind
+        if self.kind == 0:
             try:
                 self.id = int(self.ui.lineEdit.text())
             except ValueError:
@@ -85,9 +94,9 @@ class DownloadMusic():
                 res = self.get_playlist_inf()
                 if res:
                     return
-                tw = self.ui.tableWidget
+                self.tw = self.ui.tableWidget
 
-        elif kind == 1:
+        elif self.kind == 1:
             try:
                 self.id = int(self.ui.lineEdit_2.text())
             except ValueError:
@@ -96,11 +105,11 @@ class DownloadMusic():
                 res = self.get_album_inf()
                 if res:
                     return
-                tw = self.ui.tableWidget_2
-        self.get_total_groups(kind)
+                self.tw = self.ui.tableWidget_2
+        self.get_total_groups()
         if self.id:
 
-            self.setTW(tw)
+            self.setTW()
             if res:
                 QMessageBox.warning(self.ui, '警告', '等待当前任务完成')
             loop = asyncio.new_event_loop()
@@ -112,9 +121,12 @@ class DownloadMusic():
             return
 
     def cut_workers(self, loop):
+        '''
+        这个函数意思是避免async超时报错, 把歌曲分成几个Group, 同时顺便促进了PREOGRESSBAR的使用'''
         # print(self.song_names, self.urls)
         asyncio.set_event_loop(loop)
-        for i in range(1, self.total_songs_groups + 1):
+        for one_group in range(1, self.total_songs_groups + 1):
+            self.downloading_group = one_group
             temp_urls = []
             temp_song_names = []
 
@@ -127,16 +139,16 @@ class DownloadMusic():
 
             # print(temp_urls, temp_song_names)
             self.download_music(temp_urls, temp_song_names)
-            self.ms.text_print.emit(self.bar, i)
-        self.reset()
+            self.bar_ms.bar_set.emit()
+        self.reset_ms.reset.emit()
 
-    def get_total_groups(self, kind):
+    def get_total_groups(self):
         self.total_songs_groups = len(self.urls) // self.max_workers + 1
         # print(self.total_songs_groups)
 
-        if kind == 0:
+        if self.kind == 0:
             self.bar = self.ui.progressBar
-        elif kind == 1:
+        elif self.kind == 1:
             self.bar = self.ui.progressBar_2
         self.bar.setRange(0, self.total_songs_groups)
 
@@ -154,25 +166,21 @@ class DownloadMusic():
 
     def get_album_inf(self):
 
-        res = requests.get(
-            f'http://music.163.com/api/album/{self.id}?ext=true', headers=headers2)
-        if res.status_code != 200:
-            QMessageBox.warning(self.ui, '警告', '无效')
-
-            return 1
-
-        def get_json():
+        def get_inf():
             global songs_information
-            dic = res.json()
-            self.album_or_playlist_name = dic['album']['name']
-            songs_information = dic['album']['songs']
-        try:
-            get_json()
+            try:
 
-        except KeyError:
-            QMessageBox.warning(self.ui, '警告', '无效')
+                res = requests.get(
+                    f'http://music.163.com/api/album/{self.id}?ext=true', headers=headers2)
+                dic = res.json()
+                name = dic['album']['name']
+                songs_inf = dic['album']['songs']
+            except KeyError:
+                sleep(.5)
 
-            return 1
+                name, songs_inf = get_inf()
+            return name, songs_inf
+        self.album_or_playlist_name, songs_information = get_inf()
 
         # print(dic)
 
@@ -249,8 +257,12 @@ class DownloadMusic():
 
     async def download_one_music(self, url, name=None):
         # print(url, name)
+        path = f'Music/{self.folder_name}/' + name
         if not name:
             name = url.split("/")[-1]
+        if os.path.exists(path):
+            print(name, "已下载")
+            return
         # print(name, "开始")
         # timeout=aiohttp.ClientTimeout(total=60)
         async with aiohttp.ClientSession() as session:
@@ -262,7 +274,6 @@ class DownloadMusic():
 
                 else:
                     cont = await res.content.read()
-                    path = f'Music/{self.an}/' + name
 
                     async with aiofiles.open(path, "wb") as f:
 
@@ -285,14 +296,14 @@ class DownloadMusic():
         # t = Thread(target=getProgress)
         # t.start()
         # list_len = len
-        self.an = self.format_name(self.album_or_playlist_name)
-        if not os.path.exists(f"Music/{self.an}"):
-            os.mkdir(f"Music/{self.an}")
+        self.folder_name = self.format_name(self.album_or_playlist_name)
+        if not os.path.exists(f"Music/{self.folder_name}"):
+            os.mkdir(f"Music/{self.folder_name}")
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.create_task(urls, names))
 
-    def set_bar(self, bar, _int):
-        bar.setValue(_int)
+    def set_bar(self):
+        self.bar.setValue(self.downloading_group)
 
 
 app = QApplication([])
