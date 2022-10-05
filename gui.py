@@ -25,7 +25,7 @@ reg = re.compile("<title>(.*?)</title>", re.S)
 
 
 class ProgressBarSignals(QObject):
-    bar_set = Signal(QProgressBar, int)
+    bar_set = Signal()
 
 
 class ResetSignals(QObject):
