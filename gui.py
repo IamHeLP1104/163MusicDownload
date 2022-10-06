@@ -265,7 +265,7 @@ class DownloadMusic():
             return
         # print(name, "开始")
         # timeout=aiohttp.ClientTimeout(total=60)
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=64,verify_ssl=False)) as session:
 
             async with session.get(url, headers=headers3) as res:
                 # print(res.status)
