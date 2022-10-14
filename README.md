@@ -1,7 +1,7 @@
 # 163MusicDownload
 163MusicDownload is being sponsored by the following tool; please help to support us by taking a look and signing up to a free tria.
 # 本程序仅供学习之用
-
+## 求个Star！！！
 # 网易云音乐下载器
 ## 安装Python
 [根据此网站教程安装Python](http://www.liaoxuefeng.com/wiki/001374738125095c955c1e6d8bb493182103fac9270762a000/001374738150500472fd5785c194ebea336061163a8a974000)
