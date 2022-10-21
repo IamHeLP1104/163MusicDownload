@@ -13,15 +13,15 @@
 
 ## 使用方法 
 + 安装库，在终端输入以下命令
-  pip install requests
-  pip install aiohttp
-  pip install aiofiles
+    pip install requests
+    pip install aiohttp
+    pip install aiofiles
 + 在某个网易云音乐歌单或专辑网址上复制ID, 这些URL应类似于[https://music.163.com/#/playlist?id=2189465719](https://music.163.com/#/playlist?id=2189465719), 只要复制id=后面的一串数字就行了.
 + 有两种方法，第一种,在终端输入以下命令(第一行是下载专辑的，第二行是下载歌单的):
-  python cmd.py -a (id)
-  python cmd.py -p (id)
+    python cmd.py -a (id)
+    python cmd.py -p (id)
 第2种：直接运行gui.py,不过要额外安装pyside2
-  pip install Pyside2
+    pip install Pyside2
 + 失败了多试几次, 因为有极少数的时候会出BUG
 
 Enjoy it !
