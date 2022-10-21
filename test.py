@@ -1,3 +1,6 @@
+from sys import argv
+
+
 class A:
     def __init__(self, cls):
         del cls.name
@@ -10,4 +13,5 @@ class B:
 # B()
 class C:
     def __init__(self):
-        self.
+        self
+print(argv)

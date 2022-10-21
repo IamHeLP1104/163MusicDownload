@@ -1,12 +1,12 @@
-from PySide2.QtWidgets import QApplication, QMessageBox, QTableWidgetItem, QProgressBar
+from func import get_playlist_inf, get_album_inf, get_total_groups, cut_workers
+
+from PySide2.QtWidgets import QApplication, QMessageBox, QTableWidgetItem
 from PySide2.QtUiTools import QUiLoader
 from PySide2.QtCore import Qt, QObject, Signal
-from func import get_playlist_inf, get_album_inf, get_total_groups, cut_workers
+
 from threading import Thread
 import re
-
 import asyncio
-import os
 from time import sleep
 
 headers1 = {
@@ -107,7 +107,7 @@ class DownloadMusic():
                     return
                 self.tw = self.ui.tableWidget_2
         get_total_groups(self)
-        
+
         if self.kind == 0:
             self.bar = self.ui.progressBar
         elif self.kind == 1:
@@ -128,6 +128,9 @@ class DownloadMusic():
 
     def set_bar(self):
         self.bar.setValue(self.downloading_group)
+
+    def warn(self):
+        QMessageBox.warning(self.ui, '警告', '无效')
 
 
 app = QApplication([])

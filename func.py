@@ -1,14 +1,11 @@
-from PySide2.QtWidgets import QApplication, QMessageBox, QTableWidgetItem, QProgressBar
-from PySide2.QtUiTools import QUiLoader
-from PySide2.QtCore import Qt, QObject, Signal
 
-from threading import Thread
 import re
-import aiohttp
-import aiofiles
 import asyncio
 import os
 from time import sleep
+
+import aiohttp
+import aiofiles
 import requests
 headers1 = {
     'Host': 'api.no0a.cn',
@@ -30,7 +27,7 @@ def get_playlist_title(cls):
     if playlist_inf.status_code != 200:
         # print(type(self.id))
         if cls.mode == 'gui':
-            QMessageBox.warning(cls.ui, '警告', '无效')
+            cls.warn()
         else:
             print('无效')
         return 1
@@ -96,7 +93,7 @@ def get_album_inf(cls):
             name, songs_inf = get_inf()
         return name, songs_inf
     cls.album_or_playlist_name, songs_information = get_inf()
-
+    cls.folder_name = format_name(cls.album_or_playlist_name)
     # print(dic)
 
     if not cls.urls and not cls.song_names:
@@ -193,7 +190,9 @@ def download_music(cls, urls, names=None):
     # t = Thread(target=getProgress)
     # t.start()
     # list_len = len
-    cls.folder_name = format_name(cls.album_or_playlist_name)
+    # print(cls.album_or_playlist_name)
+    # cls.folder_name = format_name(cls.album_or_playlist_name)
+    # print(cls.folder_name)
     if not os.path.exists(f"Music/{cls.folder_name}"):
         os.mkdir(f"Music/{cls.folder_name}")
     loop = asyncio.get_event_loop()
