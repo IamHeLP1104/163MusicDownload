@@ -1,6 +1,5 @@
 from func import get_playlist_inf, get_album_inf, get_total_groups, cut_workers
 from threading import Thread
-import os
 import sys
 import asyncio
 args = sys.argv
@@ -31,7 +30,8 @@ class DownloadMusic():
 def layout_help():
     help_content = '''
     163MusicDownload v1.0
-
+    Usage: python {} [[-a|-p id]|-h|-i]
+    
     -h : View this help page
     -a or --album : Download one album
     -p or --playlist : Download one playlist
@@ -44,16 +44,11 @@ if __name__ == '__main__':
 
     if len(args) == 3:
         dl = DownloadMusic()
-        # print(args[1] == ('-a' or '--album'))
-        # print(args[1] == '-p' or '--playlist')
-        
+        dl.id = args[2]
         if args[1] == ('-a' or '--album'):
-            dl.id = args[2]
-            # print(122222)
             get_album_inf(dl)
-        elif args[1] == ('-p' or '--playlist'):
-            dl.id = args[2]
-            # print(11111)
+            # print(dl.album_or_playlist_name)
+        if args[1] == ('-p' or '--playlist'):
             get_playlist_inf(dl)
         else:
             layout_help()

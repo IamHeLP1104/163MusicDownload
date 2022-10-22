@@ -1,12 +1,11 @@
-
 import re
 import asyncio
 import os
 from time import sleep
 
+import requests
 import aiohttp
 import aiofiles
-import requests
 headers1 = {
     'Host': 'api.no0a.cn',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:104.0) Gecko/20100101 Firefox/104.0',
@@ -38,7 +37,6 @@ def get_playlist_title(cls):
 
 
 def get_playlist_inf(cls):
-    # print('begin')
     res = get_playlist_title(cls)
     if res:
         return 1
@@ -196,7 +194,7 @@ def download_music(cls, urls, names=None):
     # cls.folder_name = format_name(cls.album_or_playlist_name)
     # print(cls.folder_name)
     if not os.path.exists(f"Music/"):
-        os.mkdir(f"Music/")    
+        os.mkdir(f"Music/")
     if not os.path.exists(f"Music/{cls.folder_name}"):
         os.mkdir(f"Music/{cls.folder_name}")
     loop = asyncio.get_event_loop()
