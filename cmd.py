@@ -30,6 +30,8 @@ class DownloadMusic():
 
 def layout_help():
     help_content = '''
+    163MusicDownload v1.0
+
     -h : View this help page
     -a or --album : Download one album
     -p or --playlist : Download one playlist
@@ -42,11 +44,16 @@ if __name__ == '__main__':
 
     if len(args) == 3:
         dl = DownloadMusic()
-        dl.id = args[2]
-        if args[1] == '-a' or '--album':
+        # print(args[1] == ('-a' or '--album'))
+        # print(args[1] == '-p' or '--playlist')
+        
+        if args[1] == ('-a' or '--album'):
+            dl.id = args[2]
+            # print(122222)
             get_album_inf(dl)
-            print(dl.album_or_playlist_name)
-        if args[1] == '-p' or '--playlist':
+        elif args[1] == ('-p' or '--playlist'):
+            dl.id = args[2]
+            # print(11111)
             get_playlist_inf(dl)
         else:
             layout_help()

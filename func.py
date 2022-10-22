@@ -34,9 +34,11 @@ def get_playlist_title(cls):
     page_tx = playlist_inf.text
     title = reg.findall(page_tx)[0]
     cls.album_or_playlist_name = title.split(' - ')[0]
+    cls.folder_name = format_name(cls.album_or_playlist_name)
 
 
 def get_playlist_inf(cls):
+    # print('begin')
     res = get_playlist_title(cls)
     if res:
         return 1
@@ -193,6 +195,8 @@ def download_music(cls, urls, names=None):
     # print(cls.album_or_playlist_name)
     # cls.folder_name = format_name(cls.album_or_playlist_name)
     # print(cls.folder_name)
+    if not os.path.exists(f"Music/"):
+        os.mkdir(f"Music/")    
     if not os.path.exists(f"Music/{cls.folder_name}"):
         os.mkdir(f"Music/{cls.folder_name}")
     loop = asyncio.get_event_loop()

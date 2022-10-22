@@ -50,7 +50,7 @@ class DownloadMusic():
         self.reset_ms = ResetSignals()
         self.reset_ms.reset.connect(self.reset)
 
-        self.ui = QUiLoader().load('dwnld.ui')
+        self.ui = QUiLoader().load('UI/dwnld.ui')
         self.ui.setFixedSize(self.ui.width(), self.ui.height())
 
         self.ui.pushButton_3.clicked.connect(lambda: self.begin_download(0))
