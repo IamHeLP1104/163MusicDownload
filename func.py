@@ -31,9 +31,10 @@ def get_playlist_title(cls):
             print('无效')
         return 1
     page_tx = playlist_inf.text
+    # print(page_tx)
     title = reg.findall(page_tx)[0]
-    cls.album_or_playlist_name = title.split(' - ')[0]
-    cls.folder_name = format_name(cls.album_or_playlist_name)
+    playlist_name = title.split(' - ')[0]
+    cls.folder_name = format_name(playlist_name)
 
 
 def get_playlist_inf(cls):
@@ -45,11 +46,12 @@ def get_playlist_inf(cls):
         url = f'https://api.no0a.cn/api/cloudmusic/playlist/{cls.id}'
         # print(url)
         js_res = requests.get(url, headers1)
-        # print(js_res.text)
+        # print(js_res.status_code)
         try:
             js_res = js_res.json()
         except requests.exceptions.JSONDecodeError:
-            return 1
+            print('无效')
+            return
         songs_inf = js_res['results']
         if len(songs_inf) == 1:
 
@@ -92,8 +94,8 @@ def get_album_inf(cls):
 
             name, songs_inf = get_inf()
         return name, songs_inf
-    cls.album_or_playlist_name, songs_information = get_inf()
-    cls.folder_name = format_name(cls.album_or_playlist_name)
+    album_name, songs_information = get_inf()
+    cls.folder_name = format_name(album_name)
     # print(dic)
 
     if not cls.urls and not cls.song_names:

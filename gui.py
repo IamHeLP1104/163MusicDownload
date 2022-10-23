@@ -38,7 +38,6 @@ class DownloadMusic():
         self.id = ''
         self.max_workers = 20
         self.song_names = []
-        self.album_or_playlist_name = ''
         self.urls = []
         self.folder_name = ''
 
