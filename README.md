@@ -1,5 +1,4 @@
-# 163MusicDownload
-163MusicDownload is being sponsored by the following tool; please help to support us by taking a look and signing up to a free tria.
+
 # 本程序仅供学习之用
 
 ## 求Star啊啊啊
