@@ -27,8 +27,9 @@
     python cmd.py -a (id)
     python cmd.py -p (id)
 
-失败了多试几次, 因为有极少数的时候会出BUG
-Enjoy it !
+失败了多试几次, 因为有极少数的时候会出BUG😥
+
+Enjoy it !😊
 
 ## 版权问题
 如果涉及版权问题，项目将立刻关闭。
