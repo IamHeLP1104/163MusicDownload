@@ -1,6 +1,6 @@
 
 
-# 163MusicDownload ![Github stars](https://img.shields.io/badge/HeLP-Music)
+# 163MusicDownload ![Github stars](https://img.shields.io/badge/HeLP-Music-blue)
 ## 安装Python
 [根据此网站教程安装Python](http://www.liaoxuefeng.com/wiki/001374738125095c955c1e6d8bb493182103fac9270762a000/001374738150500472fd5785c194ebea336061163a8a974000)
 注意安装的版本是 **python3**
