@@ -6,9 +6,10 @@
 + 安装Python[根据此网站教程安装Python](http://www.liaoxuefeng.com/wiki/001374738125095c955c1e6d8bb493182103fac9270762a000/001374738150500472fd5785c194ebea336061163a8a974000)
 注意安装的版本是 **python3**
 + 安装库，在终端输入以下命令
+'''
     pip install requests
     pip install aiohttp
-    pip install aiofiles
+    pip install aiofiles'''
 + 在某个网易云音乐歌单或专辑网址上复制ID, 这些URL应类似于[https://music.163.com/#/playlist?id=2189465719](https://music.163.com/#/playlist?id=2189465719), 只要复制id=后面的一串数字就行了.
 + 在终端输入以下命令(第一行是下载专辑的，第二行是下载歌单的):
     python cmd.py -a (id)
